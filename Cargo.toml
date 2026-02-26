@@ -1,0 +1,14 @@
+[package]
+name = "glocalvision"
+version = "0.1.0"
+edition = "2021"
+description = "glocalVision custom Telegram foundation"
+license = "MIT"
+
+[features]
+default = []
+tdlib-download = []
+tdlib-local = []
+tdlib-pkg-config = []
+
+[dependencies]
