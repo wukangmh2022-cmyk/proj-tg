@@ -9,6 +9,7 @@ Android-native MVP is now available under `android/` (Android-only scope).
 - Input: user query + channel messages (plain text)
 - Process: signal extraction (entry/exit), trade pairing, stats
 - Output: markdown-like report with cumulative return, drawdown, and prompt block
+- Positioning: mobile-first agentic interaction; long-running monitoring is planned for desktop service phases
 
 Build APK locally (if Android SDK is installed):
 

@@ -26,6 +26,10 @@ Last Updated: 2026-02-26
 - GitHub Actions builds debug APK
 - Artifact upload for testing
 
+6. Mobile role boundary (explicit)
+- Mobile focuses on interactive agentic analysis and report reading
+- Long-running monitoring/scheduling is deferred to desktop service phases
+
 ## Implemented in this repository
 
 - Android app module: `android/`
@@ -47,9 +51,10 @@ The CI setup explicitly follows your reference project style:
 
 ## Out of P0 (next phases)
 
-- Live Telegram incremental sync via TDLib
-- Multi-group persistent watch tasks
-- LLM semantic trigger rules
-- Daily scheduled reports
+- Mobile manual channel/group browsing UI (Phase 1)
+- Desktop mac service for 24h monitoring and scheduled jobs (Phase 2)
+- Multi-group persistent watch tasks (desktop)
+- LLM semantic trigger rules (desktop + mobile review)
+- Daily scheduled reports pushed to mobile
 - openindex/openviking adapters
 - Exchange price verification for missing prices
