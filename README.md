@@ -6,6 +6,9 @@
 
 Android-native MVP is now available under `android/` (Android-only scope).
 
+- Login profile screen (API ID / API Hash / phone local config)
+- LLM source config (base URL / API key / model) + endpoint test (`/v1/models`)
+- Manual channel message view with keyword filtering
 - Input: user query + channel messages (plain text)
 - Process: signal extraction (entry/exit), trade pairing, stats
 - Output: markdown-like report with cumulative return, drawdown, and prompt block

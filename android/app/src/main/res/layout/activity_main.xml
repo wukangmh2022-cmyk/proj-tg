@@ -13,15 +13,129 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="glocalVision P0 Agentic MVP"
-            android:textSize="20sp"
+            android:text="glocalVision Android"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="User Request" />
+            android:layout_marginTop="4dp"
+            android:text="Agentic chat + channel reading + desktop task handoff"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Account Config (Telegram login profile)"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/apiIdInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="API ID"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/apiHashInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="API Hash"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/phoneInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Phone (+86..., +1...)"
+            android:inputType="phone" />
+
+        <EditText
+            android:id="@+id/codeInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Login code (optional in this MVP)"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/saveLoginButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Save Login Profile" />
+
+        <TextView
+            android:id="@+id/loginStatusView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Not configured" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="LLM Source Config"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/llmBaseUrlInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Base URL (OpenAI-compatible)"
+            android:inputType="textUri" />
+
+        <EditText
+            android:id="@+id/llmApiKeyInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="API Key"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/llmModelInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Model (e.g. gpt-4.1-mini)"
+            android:inputType="text" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/saveLlmButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Save LLM" />
+
+            <Button
+                android:id="@+id/testLlmButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Test LLM" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/llmStatusView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="LLM not configured" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Agentic Analysis"
+            android:textStyle="bold" />
 
         <EditText
             android:id="@+id/requestInput"
@@ -50,14 +164,8 @@
             android:id="@+id/analyzeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:text="Analyze" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Output" />
 
         <TextView
             android:id="@+id/outputView"
@@ -68,6 +176,39 @@
             android:fontFamily="monospace"
             android:padding="12dp"
             android:textColor="#E8EEF5"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Manual Channel View"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/filterKeywordInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Filter keyword (e.g. BTCUSDT, 马斯克, AI)"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/filterButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Filter Messages" />
+
+        <TextView
+            android:id="@+id/channelPreviewView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#0E1116"
+            android:fontFamily="monospace"
+            android:padding="12dp"
+            android:textColor="#DDE7F3"
             android:textIsSelectable="true"
             android:textSize="12sp" />
 
