@@ -9,6 +9,7 @@ The old `android/` app remains a prototype, but the real client path is now base
 - Integration guide: [docs/nekogram-base-track.md](/Users/pippo/Downloads/proj-tg/docs/nekogram-base-track.md)
 - Upstream patch: [patches/nekogram/0001-glocalvision-ai-entry.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-entry.patch)
 - Apply helper: [scripts/apply_nekogram_patch.sh](/Users/pippo/Downloads/proj-tg/scripts/apply_nekogram_patch.sh)
+- CI workflow: [nekogram-android.yml](/Users/pippo/Downloads/proj-tg/.github/workflows/nekogram-android.yml)
 
 What this changes:
 

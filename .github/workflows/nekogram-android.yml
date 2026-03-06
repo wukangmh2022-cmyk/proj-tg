@@ -1,0 +1,137 @@
+name: Nekogram Android Build
+
+on:
+  push:
+    branches:
+      - main
+      - codex/nekogram-base
+  workflow_dispatch:
+
+jobs:
+  build-nekogram:
+    runs-on: ubuntu-latest
+    env:
+      NEKOGRAM_COMMIT: 40caf3b2
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8
+
+    steps:
+      - name: Checkout overlay repo
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses and install SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.1.0" \
+            "ndk;27.3.13750724"
+
+      - name: Clone Nekogram base
+        run: |
+          git clone https://github.com/Nekogram/Nekogram.git nekogram-src
+          git -C nekogram-src checkout "${NEKOGRAM_COMMIT}"
+          git -C nekogram-src rev-parse --short HEAD
+
+      - name: Create local.properties
+        run: |
+          cat > nekogram-src/local.properties <<EOF
+          sdk.dir=${ANDROID_SDK_ROOT}
+          EOF
+
+      - name: Create stub google-services.json
+        run: |
+          cat > /tmp/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "glocalvision-ci",
+              "storage_bucket": "glocalvision-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:1111111111111111",
+                  "android_client_info": {
+                    "package_name": "tw.nekomimi.nekogram"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyD-glocalVision-ci-placeholder"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              },
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:2222222222222222",
+                  "android_client_info": {
+                    "package_name": "tw.nekomimi.nekogram.beta"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyD-glocalVision-ci-placeholder"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+          cp /tmp/google-services.json nekogram-src/TMessagesProj/google-services.json
+          cp /tmp/google-services.json nekogram-src/TMessagesProj_App/google-services.json
+
+      - name: Apply GlocalVision patch
+        run: |
+          chmod +x scripts/apply_nekogram_patch.sh
+          ./scripts/apply_nekogram_patch.sh "${GITHUB_WORKSPACE}/nekogram-src"
+          git -C nekogram-src status --short
+
+      - name: Create debug keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build debug APK
+        working-directory: nekogram-src
+        run: |
+          chmod +x gradlew
+          ./gradlew :TMessagesProj_App:assembleDebug --stacktrace
+
+      - name: Collect APKs
+        run: |
+          mkdir -p dist
+          find nekogram-src/TMessagesProj_App/build/outputs/apk -name '*.apk' -exec cp {} dist/ \;
+          ls -lah dist
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: glocalvision-nekogram-debug
+          path: dist/*.apk

@@ -60,6 +60,10 @@ Manual alternative:
 git apply /Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-entry.patch
 ```
 
+CI note:
+
+- This repo's Android Actions workflow builds against a cloned `Nekogram` checkout, applies the patch, and injects a stub `google-services.json` only for CI debug builds.
+
 ## Important scope boundary
 
 Current patch does not yet:
