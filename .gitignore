@@ -1,4 +1,5 @@
 /target
+.DS_Store
 glocalvision.toml
 android/.gradle/
 android/local.properties

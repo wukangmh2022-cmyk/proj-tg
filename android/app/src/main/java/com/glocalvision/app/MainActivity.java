@@ -288,11 +288,11 @@ public class MainActivity extends AppCompatActivity {
 
         String apiKey = llmApiKeyInput.getText().toString().trim();
         String prompt = SignalAnalyzer.buildAiExtractionPrompt(channelName, request, evidencePack, localDraft);
+        final String finalRequest = request;
 
         new Thread(() -> {
             try {
                 String aiResult = callChatCompletions(baseUrl, apiKey, model, prompt);
-                String finalRequest = request;
                 runOnUiThread(() -> {
                     outputView.setText(aiResult + "\n\n---\nLocal draft reference:\n" + localDraft);
                     Toast.makeText(this, "AI extraction complete", Toast.LENGTH_SHORT).show();
