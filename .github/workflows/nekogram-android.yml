@@ -125,8 +125,15 @@ jobs:
           mkdir -p ../dist
           set -o pipefail
           if ! ./gradlew :TMessagesProj_App:assembleDebug --stacktrace 2>&1 | tee ../dist/gradle-build.log; then
-            tail -n 80 ../dist/gradle-build.log > ../dist/gradle-build-tail.txt
-            error_message="$(tr '\n' ' ' < ../dist/gradle-build-tail.txt | sed 's/%/%25/g; s/\r/%0D/g; s/:/%3A/g')"
+            awk '
+              /\* What went wrong:/ { capture=1; next }
+              /^\* Try:/ { capture=0 }
+              capture { print }
+            ' ../dist/gradle-build.log > ../dist/gradle-what-went-wrong.txt
+            if [ ! -s ../dist/gradle-what-went-wrong.txt ]; then
+              tail -n 120 ../dist/gradle-build.log > ../dist/gradle-what-went-wrong.txt
+            fi
+            error_message="$(tr '\n' ' ' < ../dist/gradle-what-went-wrong.txt | head -c 7000 | sed 's/%/%25/g; s/\r/%0D/g; s/:/%3A/g')"
             echo "::error title=Gradle build failed::${error_message}"
             exit 1
           fi
