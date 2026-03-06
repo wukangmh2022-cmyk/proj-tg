@@ -145,6 +145,10 @@ jobs:
           cp /tmp/google-services.json nekogram-src/TMessagesProj/google-services.json
           cp /tmp/google-services.json nekogram-src/TMessagesProj_App/google-services.json
 
+      - name: Narrow ABI set for CI
+        run: |
+          perl -0pi -e 's/universalApk true/universalApk false/; s/include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"/include "arm64-v8a"/' nekogram-src/TMessagesProj_App/build.gradle
+
       - name: Apply GlocalVision patch
         run: |
           chmod +x scripts/apply_nekogram_patch.sh
