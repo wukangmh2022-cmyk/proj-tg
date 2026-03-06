@@ -1,0 +1,278 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java
+index bd81f10a..60a3e6bd 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java
+@@ -1574,6 +1574,7 @@ public class ChatActivity extends BaseFragment implements
+     private final static int chat_menu_search = -1;
+     private final static int chat_menu_options = -2;
+     private final static int chat_menu_edit_text_options = -3;
++    private final static int chat_menu_ai = -4;
+     private final static int clear_history = 15;
+     private final static int delete_chat = 16;
+     private final static int share_contact = 17;
+@@ -3825,6 +3826,8 @@ public class ChatActivity extends BaseFragment implements
+                             finishFragment();
+                         }
+                     }
++                } else if (id == chat_menu_ai) {
++                    GlocalVisionAiHelper.showEntrySheet(ChatActivity.this);
+                 } else if (id == view_as_topics) {
+                     if (getUserConfig().getClientUserId() == dialog_id) {
+                         getMessagesController().setSavedViewAs(true);
+@@ -4378,6 +4381,11 @@ public class ChatActivity extends BaseFragment implements
+             }
+         }
+ 
++        if (chatMode == 0 && (threadMessageId == 0 || isTopic) && getDialogId() < 0 && !UserObject.isReplyUser(currentUser) && !isReport()) {
++            ActionBarMenuItem aiItem = menu.addItem(chat_menu_ai, LocaleController.getString(R.string.GlocalVisionAiShort));
++            aiItem.setContentDescription(LocaleController.getString(R.string.GlocalVisionAi));
++        }
++
+         editTextItem = menu.lazilyAddItem(chat_menu_edit_text_options, R.drawable.ic_ab_other, themeDelegate);
+         editTextItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
+         editTextItem.setTag(null);
+@@ -45376,4 +45384,4 @@ public class ChatActivity extends BaseFragment implements
+         abstract void drawChatBackgroundElements(Canvas canvas, @Nullable RectF position);
+         abstract void drawChatForegroundElements(Canvas canvas, @Nullable RectF position);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/TMessagesProj/src/main/res/values/strings.xml b/TMessagesProj/src/main/res/values/strings.xml
+index c7b16222..0b0ebcc6 100644
+--- a/TMessagesProj/src/main/res/values/strings.xml
++++ b/TMessagesProj/src/main/res/values/strings.xml
+@@ -10401,4 +10401,13 @@
+     <string name="ChannelAdmins">Channel admins</string>
+     <string name="ChannelSubscribers2">Channel subscribers</string>
+     <string name="MembersSearch">Search people</string>
+-</resources>
+\ No newline at end of file
++    <string name="GlocalVisionAi">GlocalVision AI</string>
++    <string name="GlocalVisionAiShort">AI</string>
++    <string name="GlocalVisionAnalyzeChannel">Analyze current channel</string>
++    <string name="GlocalVisionExtractSignals">Extract trading signals</string>
++    <string name="GlocalVisionQueueDesktop">Queue on desktop</string>
++    <string name="GlocalVisionPromptPreviewSubtitle">%1$d captured text messages from %2$d loaded messages</string>
++    <string name="GlocalVisionPreviewTruncated">Preview truncated, copy to use the full prompt</string>
++    <string name="GlocalVisionNoLoadedMessages">No loaded text messages are available yet. Scroll the channel first, then open AI again.</string>
++    <string name="GlocalVisionPromptCopied">Prompt copied to clipboard</string>
++</resources>
+--- a/TMessagesProj/src/main/java/org/telegram/ui/GlocalVisionAiHelper.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/GlocalVisionAiHelper.java
+@@ -0,0 +1,215 @@
++package org.telegram.ui;
++
++import android.text.TextUtils;
++
++import org.telegram.messenger.AndroidUtilities;
++import org.telegram.messenger.LocaleController;
++import org.telegram.messenger.MessageObject;
++import org.telegram.messenger.R;
++import org.telegram.ui.ActionBar.AlertDialog;
++import org.telegram.ui.ActionBar.BottomSheet;
++import org.telegram.ui.Components.BulletinFactory;
++
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.Locale;
++
++public final class GlocalVisionAiHelper {
++
++    private static final int MAX_CAPTURED_MESSAGES = 120;
++    private static final int MAX_CAPTURED_CHARS = 12000;
++    private static final int PREVIEW_LIMIT = 1800;
++    private static final int PROMPT_MODE_ANALYZE = 0;
++    private static final int PROMPT_MODE_SIGNALS = 1;
++    private static final int PROMPT_MODE_DESKTOP = 2;
++
++    private GlocalVisionAiHelper() {
++    }
++
++    public static void showEntrySheet(ChatActivity fragment) {
++        if (fragment == null || fragment.getParentActivity() == null) {
++            return;
++        }
++        BottomSheet.Builder builder = new BottomSheet.Builder(fragment.getParentActivity(), false, fragment.getResourceProvider());
++        builder.setTitle(LocaleController.getString(R.string.GlocalVisionAi));
++        builder.setItems(
++            new CharSequence[]{
++                LocaleController.getString(R.string.GlocalVisionAnalyzeChannel),
++                LocaleController.getString(R.string.GlocalVisionExtractSignals),
++                LocaleController.getString(R.string.GlocalVisionQueueDesktop)
++            },
++            new int[]{
++                R.drawable.outline_header_search,
++                R.drawable.mini_stats,
++                R.drawable.settings_devices
++            },
++            (dialog, which) -> {
++                if (which == 0) {
++                    showPromptPreview(fragment, PROMPT_MODE_ANALYZE);
++                } else if (which == 1) {
++                    showPromptPreview(fragment, PROMPT_MODE_SIGNALS);
++                } else if (which == 2) {
++                    showPromptPreview(fragment, PROMPT_MODE_DESKTOP);
++                }
++            }
++        );
++        fragment.showDialog(builder.create());
++    }
++
++    private static void showPromptPreview(ChatActivity fragment, int mode) {
++        EvidenceSnapshot snapshot = captureEvidence(fragment);
++        if (TextUtils.isEmpty(snapshot.evidenceBody)) {
++            showNoEvidence(fragment);
++            return;
++        }
++
++        String prompt = buildPrompt(fragment, snapshot, mode);
++        String preview = prompt.length() > PREVIEW_LIMIT
++            ? prompt.substring(0, PREVIEW_LIMIT) + "\n\n[" + LocaleController.getString(R.string.GlocalVisionPreviewTruncated) + "]"
++            : prompt;
++
++        AlertDialog.Builder builder = new AlertDialog.Builder(fragment.getParentActivity(), fragment.getResourceProvider());
++        builder.setTitle(getPromptTitle(mode));
++        builder.setSubtitle(LocaleController.formatString(
++            R.string.GlocalVisionPromptPreviewSubtitle,
++            snapshot.capturedMessages,
++            snapshot.totalLoadedMessages
++        ));
++        builder.setMessage(preview);
++        builder.setPositiveButton(LocaleController.getString(R.string.Copy), (dialogInterface, which) -> {
++            AndroidUtilities.addToClipboard(prompt);
++            showCopied(fragment);
++        });
++        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
++        fragment.showDialog(builder.create());
++    }
++
++    private static EvidenceSnapshot captureEvidence(ChatActivity fragment) {
++        EvidenceSnapshot snapshot = new EvidenceSnapshot();
++        snapshot.dialogId = fragment.getDialogId();
++        snapshot.topicId = fragment.getTopicId();
++        snapshot.title = fragment.avatarContainer != null && fragment.avatarContainer.getTitleTextView() != null
++            ? String.valueOf(fragment.avatarContainer.getTitleTextView().getText())
++            : "Unknown";
++        snapshot.totalLoadedMessages = fragment.messages == null ? 0 : fragment.messages.size();
++
++        if (fragment.messages == null || fragment.messages.isEmpty()) {
++            return snapshot;
++        }
++
++        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US);
++        ArrayList<String> lines = new ArrayList<>();
++        int charCount = 0;
++
++        for (int i = fragment.messages.size() - 1; i >= 0; i--) {
++            MessageObject message = fragment.messages.get(i);
++            CharSequence rawText = message != null ? message.messageText : null;
++            if (TextUtils.isEmpty(rawText)) {
++                continue;
++            }
++
++            String text = rawText.toString().replace('\n', ' ').replaceAll("\\s+", " ").trim();
++            if (text.isEmpty()) {
++                continue;
++            }
++
++            String timestamp = format.format(new Date((long) message.messageOwner.date * 1000L));
++            String line = "[#" + message.getId() + " | " + timestamp + "] " + text;
++            if (charCount + line.length() > MAX_CAPTURED_CHARS) {
++                snapshot.truncated = true;
++                break;
++            }
++
++            lines.add(0, line);
++            charCount += line.length() + 1;
++
++            if (lines.size() >= MAX_CAPTURED_MESSAGES) {
++                snapshot.truncated = true;
++                break;
++            }
++        }
++
++        snapshot.capturedMessages = lines.size();
++        snapshot.evidenceBody = TextUtils.join("\n", lines);
++        return snapshot;
++    }
++
++    private static String buildPrompt(ChatActivity fragment, EvidenceSnapshot snapshot, int mode) {
++        StringBuilder prompt = new StringBuilder();
++        prompt.append("Channel: ").append(snapshot.title).append('\n');
++        prompt.append("DialogId: ").append(snapshot.dialogId).append('\n');
++        prompt.append("TopicId: ").append(snapshot.topicId).append('\n');
++        prompt.append("LoadedMessages: ").append(snapshot.totalLoadedMessages).append('\n');
++        prompt.append("CapturedMessages: ").append(snapshot.capturedMessages).append('\n');
++        prompt.append("WindowNotice: This is only the currently loaded message window from the mobile client. If history is incomplete, say so explicitly.").append('\n');
++        if (snapshot.truncated) {
++            prompt.append("CaptureNotice: The evidence below was truncated to stay inside the mobile prompt budget.").append('\n');
++        }
++        prompt.append('\n');
++
++        if (mode == PROMPT_MODE_ANALYZE) {
++            prompt.append("Task:\n");
++            prompt.append("1. Summarize the channel's current market view and strongest claims.\n");
++            prompt.append("2. Extract actionable ideas, catalysts, risks, and contradictions.\n");
++            prompt.append("3. List claims that require web verification before acting.\n");
++            prompt.append("4. Return a compact markdown report with sections: Summary, Actionable Ideas, Risks, Verification Targets, Notable Messages.\n");
++        } else if (mode == PROMPT_MODE_SIGNALS) {
++            prompt.append("Task:\n");
++            prompt.append("1. Extract all explicit or implied trading signals from the evidence.\n");
++            prompt.append("2. Match entry and exit mentions by asset or ticker where possible.\n");
++            prompt.append("3. Compute trade-level profit or loss only when both side and price are present. If data is missing, write NEEDS_MARKET_DATA instead of guessing.\n");
++            prompt.append("4. Return a markdown table with columns: asset, direction, entry, exit, pnl_percent, confidence, evidence_ids.\n");
++            prompt.append("5. Add a short note about missing history or ambiguous fills.\n");
++        } else {
++            prompt.append("Task:\n");
++            prompt.append("Prepare a desktop follow-up job for GlocalVision.\n");
++            prompt.append("Required work:\n");
++            prompt.append("1. Fetch deeper channel history.\n");
++            prompt.append("2. Verify important claims and news with web sources.\n");
++            prompt.append("3. Reconstruct signal timeline and compute pnl / drawdown where market data exists.\n");
++            prompt.append("4. Return a task plan, required external data sources, and expected output tables.\n");
++        }
++
++        prompt.append('\n');
++        prompt.append("Evidence:\n");
++        prompt.append(snapshot.evidenceBody);
++        return prompt.toString();
++    }
++
++    private static CharSequence getPromptTitle(int mode) {
++        if (mode == PROMPT_MODE_ANALYZE) {
++            return LocaleController.getString(R.string.GlocalVisionAnalyzeChannel);
++        } else if (mode == PROMPT_MODE_SIGNALS) {
++            return LocaleController.getString(R.string.GlocalVisionExtractSignals);
++        } else {
++            return LocaleController.getString(R.string.GlocalVisionQueueDesktop);
++        }
++    }
++
++    private static void showNoEvidence(ChatActivity fragment) {
++        AlertDialog.Builder builder = new AlertDialog.Builder(fragment.getParentActivity(), fragment.getResourceProvider());
++        builder.setTitle(LocaleController.getString(R.string.GlocalVisionAi));
++        builder.setMessage(LocaleController.getString(R.string.GlocalVisionNoLoadedMessages));
++        builder.setPositiveButton(LocaleController.getString(R.string.OK), null);
++        fragment.showDialog(builder.create());
++    }
++
++    private static void showCopied(ChatActivity fragment) {
++        if (BulletinFactory.canShowBulletin(fragment)) {
++            BulletinFactory.of(fragment)
++                .createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.GlocalVisionPromptCopied))
++                .show();
++        }
++    }
++
++    private static final class EvidenceSnapshot {
++        private String title;
++        private long dialogId;
++        private long topicId;
++        private int totalLoadedMessages;
++        private int capturedMessages;
++        private boolean truncated;
++        private String evidenceBody;
++    }
++}

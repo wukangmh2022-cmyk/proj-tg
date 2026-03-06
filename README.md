@@ -2,6 +2,20 @@
 
 `glocalVision` is a custom Telegram client foundation in Rust.
 
+## Current Android direction
+
+The old `android/` app remains a prototype, but the real client path is now based on `Nekogram`.
+
+- Integration guide: [docs/nekogram-base-track.md](/Users/pippo/Downloads/proj-tg/docs/nekogram-base-track.md)
+- Upstream patch: [patches/nekogram/0001-glocalvision-ai-entry.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-entry.patch)
+- Apply helper: [scripts/apply_nekogram_patch.sh](/Users/pippo/Downloads/proj-tg/scripts/apply_nekogram_patch.sh)
+
+What this changes:
+
+- we stop trying to build Telegram login and chat sync from scratch in the MVP shell
+- we patch a real Telegram Android client instead
+- the first product change is an `AI` button inside the real channel/chat screen
+
 ## Android P0 MVP
 
 Android-native MVP is now available under `android/` (Android-only scope).
@@ -32,15 +46,17 @@ GitHub Actions build:
   - debug keystore generation
   - `./gradlew assembleDebug`
 
-## Selected Library
+## Long-term backend option
 
 - Core: [TDLib](https://github.com/tdlib/td)
 - Rust wrapper: [tdlib-rs](https://github.com/FedericoBruzzone/tdlib-rs)
 
-Why this choice:
+Why this still matters:
 
 - TDLib is Telegram's official cross-platform client library and explicitly supports Android/iOS-class targets.
 - Rust wrapper keeps core logic in a safer language while still using official Telegram client primitives.
+
+Immediate delivery path for Android, however, is `Nekogram + overlay patches`, not a fresh TDLib client UI.
 
 ## Quick Start
 
