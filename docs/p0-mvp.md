@@ -5,13 +5,16 @@ Last Updated: 2026-02-26
 ## P0 Scope (must-have)
 
 1. Single-screen agentic analysis flow
-- User enters a natural-language request
-- User pastes channel/group messages (plain text)
-- App returns structured report
+- User opens a current channel page
+- Channel title row exposes a single `AI` button
+- User enters a natural-language extraction request for the current channel
+- App analyzes the current channel snapshot and returns a structured report
 
 2. Lightweight retrieval and extraction
 - No heavy RAG
-- Rule-based extraction (keyword + regex + token parsing)
+- Hybrid extraction:
+- local evidence prefilter (keyword + regex + token parsing)
+- optional LLM extraction over the filtered evidence pack
 
 3. Trading signal stats
 - Entry/exit signal detection

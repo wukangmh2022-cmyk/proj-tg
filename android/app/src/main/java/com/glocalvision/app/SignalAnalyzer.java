@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,17 +39,121 @@ public final class SignalAnalyzer {
         int windowDays = parseWindowDays(safeRequest);
         long cutoffMillis = utcMidnightDaysAgo(windowDays);
 
-        String[] lines = safeMessages.split("\\r?\\n");
         List<MessageHit> hits = new ArrayList<>();
-        List<TradeSignal> signals = new ArrayList<>();
+        List<TradeSignal> signals = extractSignals(safeMessages, cutoffMillis, hits);
+        List<ClosedTrade> closedTrades = pairTrades(signals);
+        Stats stats = computeStats(closedTrades);
 
-        int lineNo = 0;
-        for (String line : lines) {
-            lineNo++;
-            if (line == null) {
+        return renderMarkdown(safeRequest, windowDays, cutoffMillis, hits, signals, closedTrades, stats);
+    }
+
+    public static String buildChannelMeta(String rawMessages) {
+        String[] lines = rawMessages == null ? new String[0] : rawMessages.split("\\r?\\n");
+        int totalMessages = 0;
+        int signalLikeMessages = 0;
+        Set<String> symbols = new LinkedHashSet<>();
+
+        for (String rawLine : lines) {
+            String line = rawLine == null ? "" : rawLine.trim();
+            if (line.isEmpty()) {
                 continue;
             }
-            String text = line.trim();
+
+            totalMessages++;
+            String symbol = extractSymbol(line);
+            if (symbol != null) {
+                symbols.add(symbol);
+            }
+
+            if (detectSide(line) != null || symbol != null) {
+                signalLikeMessages++;
+            }
+        }
+
+        return totalMessages + " messages loaded"
+                + " | " + signalLikeMessages + " signal-like"
+                + " | " + symbols.size() + " symbols";
+    }
+
+    public static String buildEvidencePack(String rawMessages, int maxLines) {
+        String[] lines = rawMessages == null ? new String[0] : rawMessages.split("\\r?\\n");
+        List<String> relevant = new ArrayList<>();
+        List<String> fallback = new ArrayList<>();
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i] == null ? "" : lines[i].trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+
+            String numbered = "line " + (i + 1) + ": " + line;
+            if (looksRelevantForEvidence(line)) {
+                relevant.add(numbered);
+            } else if (fallback.size() < maxLines) {
+                fallback.add(numbered);
+            }
+        }
+
+        List<String> chosen = relevant.isEmpty() ? fallback : relevant;
+        StringBuilder out = new StringBuilder();
+        int limit = Math.min(maxLines, chosen.size());
+        for (int i = 0; i < limit; i++) {
+            out.append(chosen.get(i)).append('\n');
+        }
+
+        if (chosen.size() > limit) {
+            out.append("... truncated ").append(chosen.size() - limit).append(" additional relevant lines");
+        }
+
+        return out.toString().trim();
+    }
+
+    public static String buildAiExtractionPrompt(
+            String channelName,
+            String request,
+            String evidencePack,
+            String localDraft
+    ) {
+        StringBuilder out = new StringBuilder();
+        out.append("Channel: ").append(channelName).append('\n');
+        out.append("User request: ").append(request).append('\n');
+        out.append('\n');
+        out.append("Task:\n");
+        out.append("1. Extract trading pairs mentioned in the current Telegram channel evidence.\n");
+        out.append("2. Match entry and exit messages per symbol.\n");
+        out.append("3. Estimate profit or loss per closed pair only from explicit evidence.\n");
+        out.append("4. Call out unresolved or missing exits instead of inventing data.\n");
+        out.append("5. Return concise markdown with a summary and a per-symbol table.\n");
+        out.append('\n');
+        out.append("Constraints:\n");
+        out.append("- Use only the evidence below.\n");
+        out.append("- Do not invent prices, dates, or signals.\n");
+        out.append("- If the local draft conflicts with evidence, trust evidence.\n");
+        out.append('\n');
+        out.append("Evidence:\n");
+        out.append(evidencePack).append('\n');
+        out.append('\n');
+        out.append("Local draft reference:\n");
+        out.append(localDraft).append('\n');
+        out.append('\n');
+        out.append("Output format:\n");
+        out.append("- Brief summary\n");
+        out.append("- Markdown table: Symbol | Entry | Exit | Profit % | Confidence | Notes\n");
+        out.append("- Missing data section\n");
+        return out.toString().trim();
+    }
+
+    private static List<TradeSignal> extractSignals(String rawMessages, long cutoffMillis, List<MessageHit> hits) {
+        String[] lines = rawMessages.split("\\r?\\n");
+        List<TradeSignal> signals = new ArrayList<>();
+
+        for (int lineNo = 0; lineNo < lines.length; lineNo++) {
+            String rawLine = lines[lineNo];
+            if (rawLine == null) {
+                continue;
+            }
+
+            String text = rawLine.trim();
             if (text.isEmpty()) {
                 continue;
             }
@@ -63,20 +168,20 @@ public final class SignalAnalyzer {
                 continue;
             }
 
-            hits.add(new MessageHit(lineNo, text, parsedDate));
+            MessageHit hit = new MessageHit(lineNo + 1, text, parsedDate);
+            hits.add(hit);
 
             String symbol = extractSymbol(text);
             if (symbol == null) {
                 continue;
             }
-            Double price = extractPrice(text);
 
             TradeSignal signal = new TradeSignal();
             signal.symbol = symbol;
             signal.side = side;
-            signal.price = price;
+            signal.price = extractPrice(text);
             signal.date = parsedDate;
-            signal.raw = "line " + lineNo + ": " + text;
+            signal.raw = "line " + (lineNo + 1) + ": " + text;
             signals.add(signal);
         }
 
@@ -89,10 +194,7 @@ public final class SignalAnalyzer {
             }
         });
 
-        List<ClosedTrade> closedTrades = pairTrades(signals);
-        Stats stats = computeStats(closedTrades);
-
-        return renderMarkdown(safeRequest, windowDays, cutoffMillis, hits, signals, closedTrades, stats);
+        return signals;
     }
 
     private static int parseWindowDays(String request) {
@@ -119,6 +221,14 @@ public final class SignalAnalyzer {
         return cal.getTimeInMillis();
     }
 
+    private static boolean looksRelevantForEvidence(String text) {
+        return detectSide(text) != null
+                || extractSymbol(text) != null
+                || text.contains("%")
+                || text.toLowerCase(Locale.ROOT).contains("profit")
+                || text.toLowerCase(Locale.ROOT).contains("stop");
+    }
+
     private static SignalSide detectSide(String text) {
         String lower = text.toLowerCase(Locale.ROOT);
         if (containsAny(lower, ENTRY_KEYWORDS)) {
@@ -140,15 +250,15 @@ public final class SignalAnalyzer {
     }
 
     private static ParsedDate extractDate(String text) {
-        Matcher m = DATE_PATTERN.matcher(text);
-        if (!m.find()) {
+        Matcher matcher = DATE_PATTERN.matcher(text);
+        if (!matcher.find()) {
             return null;
         }
 
         try {
-            int y = Integer.parseInt(m.group(1));
-            int mo = Integer.parseInt(m.group(2));
-            int d = Integer.parseInt(m.group(3));
+            int y = Integer.parseInt(matcher.group(1));
+            int mo = Integer.parseInt(matcher.group(2));
+            int d = Integer.parseInt(matcher.group(3));
 
             Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             cal.setLenient(false);
@@ -159,13 +269,12 @@ public final class SignalAnalyzer {
             cal.set(Calendar.MINUTE, 0);
             cal.set(Calendar.SECOND, 0);
             cal.set(Calendar.MILLISECOND, 0);
-            long millis = cal.getTimeInMillis();
 
             ParsedDate date = new ParsedDate();
             date.year = y;
             date.month = mo;
             date.day = d;
-            date.utcMillis = millis;
+            date.utcMillis = cal.getTimeInMillis();
             return date;
         } catch (Exception ignored) {
             return null;
@@ -174,6 +283,7 @@ public final class SignalAnalyzer {
 
     private static String extractSymbol(String text) {
         String[] tokens = text.split("[^A-Za-z0-9_]+");
+
         for (String token : tokens) {
             String upper = token.toUpperCase(Locale.ROOT);
             if (isPairLike(upper)) {
@@ -187,6 +297,7 @@ public final class SignalAnalyzer {
                 return upper;
             }
         }
+
         return null;
     }
 
@@ -215,7 +326,7 @@ public final class SignalAnalyzer {
         Set<String> ignored = new HashSet<>();
         Collections.addAll(ignored,
                 "BUY", "SELL", "ENTRY", "EXIT", "LONG", "SHORT", "STOP", "LOSS", "TAKE", "PROFIT",
-                "KOL", "AND", "THE", "FOR", "WITH", "LINE");
+                "KOL", "AND", "THE", "FOR", "WITH", "LINE", "ROOM");
 
         if (ignored.contains(token)) {
             return false;
@@ -250,9 +361,9 @@ public final class SignalAnalyzer {
                     }
                 }
 
-                double v = Double.parseDouble(token);
-                if (v > 0.0 && v < 10_000_000.0) {
-                    candidates.add(v);
+                double value = Double.parseDouble(token);
+                if (value > 0.0 && value < 10_000_000.0) {
+                    candidates.add(value);
                 }
             } catch (NumberFormatException ignored) {
             }
@@ -261,6 +372,7 @@ public final class SignalAnalyzer {
         if (candidates.isEmpty()) {
             return null;
         }
+
         return candidates.get(candidates.size() - 1);
     }
 
@@ -334,9 +446,10 @@ public final class SignalAnalyzer {
             if (current > peak) {
                 peak = current;
             }
-            double dd = (peak - current) / peak;
-            if (dd > maxDd) {
-                maxDd = dd;
+
+            double drawdown = (peak - current) / peak;
+            if (drawdown > maxDd) {
+                maxDd = drawdown;
             }
         }
         stats.maxDrawdownPct = maxDd * 100.0;
@@ -355,74 +468,66 @@ public final class SignalAnalyzer {
     ) {
         StringBuilder out = new StringBuilder();
 
-        out.append("# glocalVision Agentic Report\\n\\n");
-        out.append("- Request: ").append(request).append("\\n");
+        out.append("# glocalVision Agentic Report\n\n");
+        out.append("- Request: ").append(request).append('\n');
         out.append("- Time Window: last ").append(windowDays).append(" days (from ")
-                .append(formatDate(cutoffMillis)).append(")\\n");
-        out.append("- Raw Hits: ").append(hits.size()).append("\\n");
-        out.append("- Extracted Signals: ").append(signals.size()).append("\\n");
-        out.append("- Closed Trades: ").append(trades.size()).append("\\n\\n");
+                .append(formatDate(cutoffMillis)).append(")\n");
+        out.append("- Raw Hits: ").append(hits.size()).append('\n');
+        out.append("- Extracted Signals: ").append(signals.size()).append('\n');
+        out.append("- Closed Trades: ").append(trades.size()).append("\n\n");
 
-        out.append("## Performance Summary\\n\\n");
-        out.append("- Priced Closed Trades: ").append(stats.pricedTrades).append("\\n");
-        out.append("- Cumulative Return: ").append(formatPercent(stats.cumulativeReturnPct)).append("\\n");
-        out.append("- Win Rate: ").append(formatPercent(stats.winRatePct)).append("\\n");
-        out.append("- Max Drawdown: ").append(formatPercent(stats.maxDrawdownPct)).append("\\n\\n");
+        out.append("## Performance Summary\n\n");
+        out.append("- Priced Closed Trades: ").append(stats.pricedTrades).append('\n');
+        out.append("- Cumulative Return: ").append(formatPercent(stats.cumulativeReturnPct)).append('\n');
+        out.append("- Win Rate: ").append(formatPercent(stats.winRatePct)).append('\n');
+        out.append("- Max Drawdown: ").append(formatPercent(stats.maxDrawdownPct)).append("\n\n");
 
-        out.append("## Closed Trades Table\\n\\n");
-        out.append("| # | Symbol | Entry Date | Entry Price | Exit Date | Exit Price | Return % |\\n");
-        out.append("|---|---|---|---:|---|---:|---:|\\n");
-
+        out.append("## Closed Trades Table\n\n");
+        out.append("| # | Symbol | Entry Date | Entry Price | Exit Date | Exit Price | Return % |\n");
+        out.append("|---|---|---|---:|---|---:|---:|\n");
         for (int i = 0; i < trades.size(); i++) {
-            ClosedTrade t = trades.get(i);
-            out.append("| ")
-                    .append(i + 1).append(" | ")
-                    .append(t.symbol).append(" | ")
-                    .append(formatDate(t.entryDate)).append(" | ")
-                    .append(formatDouble(t.entryPrice)).append(" | ")
-                    .append(formatDate(t.exitDate)).append(" | ")
-                    .append(formatDouble(t.exitPrice)).append(" | ")
-                    .append(formatPercent(t.returnPct)).append(" |\\n");
+            ClosedTrade trade = trades.get(i);
+            out.append("| ").append(i + 1)
+                    .append(" | ").append(trade.symbol)
+                    .append(" | ").append(formatDate(trade.entryDate))
+                    .append(" | ").append(formatDouble(trade.entryPrice))
+                    .append(" | ").append(formatDate(trade.exitDate))
+                    .append(" | ").append(formatDouble(trade.exitPrice))
+                    .append(" | ").append(formatPercent(trade.returnPct))
+                    .append(" |\n");
         }
 
-        out.append("\\n## Prompt Block (for LLM final reasoning)\\n\\n");
-        out.append("```text\\n");
-        out.append("你是交易审计助手。请根据以下频道信号数据做分析，不要补造不存在的数据。\\n");
-        out.append("用户需求: ").append(request).append("\\n");
-        out.append("统计窗口: 最近").append(windowDays).append("天\\n");
-        out.append("命中消息数: ").append(hits.size()).append("\\n");
-        out.append("闭合交易数: ").append(trades.size()).append("\\n");
-        out.append("累计收益: ").append(formatPercent(stats.cumulativeReturnPct)).append("\\n");
-        out.append("最大回撤: ").append(formatPercent(stats.maxDrawdownPct)).append("\\n\\n");
-        out.append("证据样本(最多10条):\\n");
-
+        out.append("\n## Prompt Block (for LLM final reasoning)\n\n");
+        out.append("```text\n");
+        out.append("You are a channel extraction assistant. Work only from supplied evidence.\n");
+        out.append("User request: ").append(request).append('\n');
+        out.append("Window: last ").append(windowDays).append(" days\n");
+        out.append("Raw hits: ").append(hits.size()).append('\n');
+        out.append("Closed trades: ").append(trades.size()).append('\n');
+        out.append("Cumulative return: ").append(formatPercent(stats.cumulativeReturnPct)).append('\n');
+        out.append("Max drawdown: ").append(formatPercent(stats.maxDrawdownPct)).append("\n\n");
+        out.append("Evidence sample:\n");
         int limit = Math.min(10, signals.size());
         for (int i = 0; i < limit; i++) {
-            out.append("- ").append(signals.get(i).raw).append("\\n");
+            out.append("- ").append(signals.get(i).raw).append('\n');
         }
-
-        out.append("\\n请输出:\\n");
-        out.append("1) 该KOL信号风格与频率\\n");
-        out.append("2) 历史表现(胜率/累计收益/回撤)\\n");
-        out.append("3) 数据缺口与真实性风险\\n");
-        out.append("4) 表格化结论\\n");
-        out.append("```\\n");
+        out.append("```\n");
 
         return out.toString();
     }
 
-    private static String formatPercent(Double v) {
-        if (v == null) {
+    private static String formatPercent(Double value) {
+        if (value == null) {
             return "N/A";
         }
-        return String.format(Locale.US, "%.2f%%", v);
+        return String.format(Locale.US, "%.2f%%", value);
     }
 
-    private static String formatDouble(Double v) {
-        if (v == null) {
+    private static String formatDouble(Double value) {
+        if (value == null) {
             return "N/A";
         }
-        return String.format(Locale.US, "%.6f", v);
+        return String.format(Locale.US, "%.6f", value);
     }
 
     private static String formatDate(ParsedDate date) {

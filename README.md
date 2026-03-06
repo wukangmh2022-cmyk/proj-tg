@@ -6,6 +6,8 @@
 
 Android-native MVP is now available under `android/` (Android-only scope).
 
+- Channel page pattern: current channel title with a single `AI` action button
+- Agent technique: local evidence prefilter + optional OpenAI-compatible LLM extraction
 - Login profile screen (API ID / API Hash / phone local config)
 - LLM source config (base URL / API key / model) + endpoint test (`/v1/models`)
 - Manual channel message view with keyword filtering
