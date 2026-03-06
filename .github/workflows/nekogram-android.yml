@@ -49,6 +49,47 @@ jobs:
           sdk.dir=${ANDROID_SDK_ROOT}
           EOF
 
+      - name: Create CI Extra.java
+        run: |
+          mkdir -p nekogram-src/TMessagesProj/src/main/java/tw/nekomimi/nekogram
+          cat > nekogram-src/TMessagesProj/src/main/java/tw/nekomimi/nekogram/Extra.java <<'EOF'
+          package tw.nekomimi.nekogram;
+
+          import org.telegram.messenger.BuildConfig;
+
+          import tw.nekomimi.nekogram.helpers.UserHelper;
+
+          public class Extra {
+              public static final int APP_ID = 4;
+              public static final String APP_HASH = "014b35b6184100b085b0d0572f9b5103";
+              public static final String PLAYSTORE_APP_URL = "https://github.com/wukangmh2022-cmyk/proj-tg";
+              public static String WS_USER_AGENT = "";
+              public static String WS_CONN_HASH = "";
+              public static String WS_DEFAULT_DOMAIN = "";
+              public static String TWPIC_BOT_USERNAME = null;
+              public static boolean FORCE_ANALYTICS = false;
+              public static String TLV_URL = "";
+              public static String SENTRY_DSN = "";
+              private static final long WEBVIEW_BOT_ID = 0L;
+
+              public static boolean isDirectApp() {
+                  return "release".equals(BuildConfig.BUILD_TYPE) || "debug".equals(BuildConfig.BUILD_TYPE);
+              }
+
+              public static UserHelper.BotInfo getHelperBot() {
+                  return null;
+              }
+
+              public static UserHelper.UserInfoBot getUserInfoBot(boolean fallback) {
+                  return null;
+              }
+
+              public static boolean isTrustedBot(long id) {
+                  return id == WEBVIEW_BOT_ID;
+              }
+          }
+          EOF
+
       - name: Create stub google-services.json
         run: |
           cat > /tmp/google-services.json <<'EOF'

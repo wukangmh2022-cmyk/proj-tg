@@ -63,6 +63,7 @@ git apply /Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-e
 CI note:
 
 - This repo's Android Actions workflow builds against a cloned `Nekogram` checkout, applies the patch, and injects a stub `google-services.json` only for CI debug builds.
+- The workflow also generates a CI-safe `tw.nekomimi.nekogram.Extra` so the upstream local-only config requirement does not block debug APK builds.
 
 ## Important scope boundary
 
