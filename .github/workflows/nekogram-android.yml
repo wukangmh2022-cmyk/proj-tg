@@ -122,15 +122,31 @@ jobs:
         working-directory: nekogram-src
         run: |
           chmod +x gradlew
-          ./gradlew :TMessagesProj_App:assembleDebug --stacktrace
+          mkdir -p ../dist
+          set -o pipefail
+          if ! ./gradlew :TMessagesProj_App:assembleDebug --stacktrace 2>&1 | tee ../dist/gradle-build.log; then
+            tail -n 80 ../dist/gradle-build.log > ../dist/gradle-build-tail.txt
+            error_message="$(tr '\n' ' ' < ../dist/gradle-build-tail.txt | sed 's/%/%25/g; s/\r/%0D/g; s/:/%3A/g')"
+            echo "::error title=Gradle build failed::${error_message}"
+            exit 1
+          fi
 
       - name: Collect APKs
+        if: success()
         run: |
           mkdir -p dist
           find nekogram-src/TMessagesProj_App/build/outputs/apk -name '*.apk' -exec cp {} dist/ \;
           ls -lah dist
 
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glocalvision-nekogram-build-logs
+          path: dist/gradle-build*
+
       - name: Upload APKs
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: glocalvision-nekogram-debug
