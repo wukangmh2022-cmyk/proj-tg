@@ -23,6 +23,7 @@ The fast path to a usable product is:
 Patch file:
 
 - [0001-glocalvision-ai-entry.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-entry.patch)
+- [0002-login-first.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0002-login-first.patch)
 
 Helper script:
 
@@ -42,6 +43,7 @@ Validated behavior of this patch:
   - trading signal extraction
   - desktop follow-up task
 - Shows a preview dialog and copies the full prompt to clipboard.
+- Skips the intro mascot page and opens `LoginActivity` directly for non-activated users, to avoid startup stalls reported on test devices.
 
 This is intentionally narrow. It proves the real-client integration point before wiring direct LLM calls.
 
@@ -87,6 +89,7 @@ The patch modifies these upstream files:
 - `TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java`
 - `TMessagesProj/src/main/java/org/telegram/ui/GlocalVisionAiHelper.java`
 - `TMessagesProj/src/main/res/values/strings.xml`
+- `TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java`
 
 ## Next steps
 

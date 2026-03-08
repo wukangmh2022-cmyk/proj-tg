@@ -9,7 +9,6 @@ fi
 target_repo="$1"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 project_root="$(cd "$script_dir/.." && pwd)"
-patch_file="$project_root/patches/nekogram/0001-glocalvision-ai-entry.patch"
 expected_head="40caf3b2"
 
 if ! git -C "$target_repo" rev-parse --git-dir >/dev/null 2>&1; then
@@ -17,8 +16,9 @@ if ! git -C "$target_repo" rev-parse --git-dir >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ ! -f "$patch_file" ]; then
-  echo "patch file not found: $patch_file" >&2
+patch_dir="$project_root/patches/nekogram"
+if [ ! -d "$patch_dir" ]; then
+  echo "patch directory not found: $patch_dir" >&2
   exit 1
 fi
 
@@ -27,7 +27,16 @@ if [ "$current_head" != "$expected_head" ]; then
   echo "warning: patch was validated on Nekogram $expected_head, current HEAD is $current_head" >&2
 fi
 
-git -C "$target_repo" apply --check "$patch_file"
-git -C "$target_repo" apply "$patch_file"
+applied=0
+for patch_file in "$patch_dir"/*.patch; do
+  [ -e "$patch_file" ] || continue
+  git -C "$target_repo" apply --check "$patch_file"
+  git -C "$target_repo" apply "$patch_file"
+  echo "applied: $patch_file"
+  applied=1
+done
 
-echo "applied: $patch_file"
+if [ "$applied" -eq 0 ]; then
+  echo "no patch files found in $patch_dir" >&2
+  exit 1
+fi

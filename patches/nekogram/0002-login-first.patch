@@ -1,0 +1,16 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+index 908cfc33..974089ab 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+@@ -1060,10 +1060,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
+     }
+ 
+     private BaseFragment getClientNotActivatedFragment() {
+-        if (LoginActivity.loadCurrentState(false, currentAccount).getInt("currentViewNum", 0) != 0) {
+-            return new LoginActivity();
+-        }
+-        return new IntroActivity();
++        return new LoginActivity();
+     }
+ 
+     public FireworksOverlay getFireworksOverlay() {
