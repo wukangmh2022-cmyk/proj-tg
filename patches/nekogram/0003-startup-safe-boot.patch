@@ -1,0 +1,43 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+index 974089ab0..328b51497 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+@@ -398,7 +398,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
+                 .build());
+         }
+         instance = this;
+-        ApplicationLoader.postInitApplication();
++        // Defer heavy app init to next loop turn so Android can finish first draw.
++        AndroidUtilities.runOnUIThread(ApplicationLoader::postInitApplication);
+         AndroidUtilities.checkDisplaySize(this, getResources().getConfiguration());
+         currentAccount = UserConfig.selectedAccount;
+         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+@@ -828,6 +829,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
+         //    refreshRateController = new RefreshRateController(this);
+         //}
+         checkFrameMetrics();
++        AndroidUtilities.runOnUIThread(this::ensureInitialFragmentAttached, 1200);
+     }
+ 
+     public void checkFrameMetrics() {
+@@ -1063,6 +1065,20 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
+         return new LoginActivity();
+     }
+ 
++    private void ensureInitialFragmentAttached() {
++        if (isFinishing() || actionBarLayout == null || !actionBarLayout.getFragmentStack().isEmpty()) {
++            return;
++        }
++        BaseFragment fallback;
++        if (UserConfig.getInstance(currentAccount).isClientActivated()) {
++            fallback = new MainTabsActivity();
++        } else {
++            fallback = getClientNotActivatedFragment();
++        }
++        actionBarLayout.addFragmentToStack(fallback, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
++        actionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
++    }
++
+     public FireworksOverlay getFireworksOverlay() {
+         return fireworksOverlay;
+     }

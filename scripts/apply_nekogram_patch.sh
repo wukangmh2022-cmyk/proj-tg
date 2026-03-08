@@ -22,9 +22,9 @@ if [ ! -d "$patch_dir" ]; then
   exit 1
 fi
 
-current_head="$(git -C "$target_repo" rev-parse --short HEAD)"
-if [ "$current_head" != "$expected_head" ]; then
-  echo "warning: patch was validated on Nekogram $expected_head, current HEAD is $current_head" >&2
+current_head="$(git -C "$target_repo" rev-parse HEAD)"
+if [[ "$current_head" != "$expected_head"* ]]; then
+  echo "warning: patch was validated on Nekogram $expected_head, current HEAD is ${current_head:0:10}" >&2
 fi
 
 applied=0

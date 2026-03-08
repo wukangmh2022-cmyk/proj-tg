@@ -1,6 +1,6 @@
 # Nekogram base track
 
-Last updated: 2026-03-06
+Last updated: 2026-03-08
 
 ## Decision
 
@@ -24,6 +24,7 @@ Patch file:
 
 - [0001-glocalvision-ai-entry.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0001-glocalvision-ai-entry.patch)
 - [0002-login-first.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0002-login-first.patch)
+- [0003-startup-safe-boot.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0003-startup-safe-boot.patch)
 
 Helper script:
 
@@ -44,6 +45,7 @@ Validated behavior of this patch:
   - desktop follow-up task
 - Shows a preview dialog and copies the full prompt to clipboard.
 - Skips the intro mascot page and opens `LoginActivity` directly for non-activated users, to avoid startup stalls reported on test devices.
+- Defers `postInitApplication()` by one UI loop turn and adds a startup fallback that force-attaches login/main fragment if initial stack is still empty.
 
 This is intentionally narrow. It proves the real-client integration point before wiring direct LLM calls.
 
