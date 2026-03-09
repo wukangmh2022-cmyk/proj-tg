@@ -1,0 +1,78 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/messenger/ApplicationLoader.java b/TMessagesProj/src/main/java/org/telegram/messenger/ApplicationLoader.java
+index 94853f24c..d75d137e2 100644
+--- a/TMessagesProj/src/main/java/org/telegram/messenger/ApplicationLoader.java
++++ b/TMessagesProj/src/main/java/org/telegram/messenger/ApplicationLoader.java
+@@ -55,6 +55,8 @@ import tw.nekomimi.nekogram.helpers.AnalyticsHelper;
+ import tw.nekomimi.nekogram.helpers.ComponentsHelper;
+ 
+ public class ApplicationLoader extends Application {
++    // Keep cold start minimal until login/main UI is stable on test devices.
++    private static final boolean MINIMAL_COLD_BOOT = true;
+ 
+     public static ApplicationLoader applicationLoaderInstance;
+ 
+@@ -87,7 +89,9 @@ public class ApplicationLoader extends Application {
+     @Override
+     protected void attachBaseContext(Context base) {
+         super.attachBaseContext(base);
+-        FirebaseFix.check(base);
++        if (!MINIMAL_COLD_BOOT) {
++            FirebaseFix.check(base);
++        }
+     }
+ 
+     public static ILocationServiceProvider getLocationServiceProvider() {
+@@ -271,7 +275,9 @@ public class ApplicationLoader extends Application {
+         }
+ 
+         ApplicationLoader app = (ApplicationLoader) ApplicationLoader.applicationContext;
+-        app.initPushServices();
++        if (!MINIMAL_COLD_BOOT) {
++            app.initPushServices();
++        }
+         if (BuildVars.LOGS_ENABLED) {
+             FileLog.d("app initied");
+         }
+@@ -282,7 +288,9 @@ public class ApplicationLoader extends Application {
+             ContactsController.getInstance(a).checkAppAccount();
+             DownloadController.getInstance(a);
+         }
+-        BillingController.getInstance().startConnection();
++        if (!MINIMAL_COLD_BOOT) {
++            BillingController.getInstance().startConnection();
++        }
+     }
+ 
+     public ApplicationLoader() {
+@@ -300,8 +308,10 @@ public class ApplicationLoader extends Application {
+ 
+         super.onCreate();
+ 
+-        AnalyticsHelper.start(this);
+-        ComponentsHelper.fixComponents(this);
++        if (!MINIMAL_COLD_BOOT) {
++            AnalyticsHelper.start(this);
++            ComponentsHelper.fixComponents(this);
++        }
+ 
+         if (BuildVars.LOGS_ENABLED) {
+             FileLog.d("app start time = " + (startTime = SystemClock.elapsedRealtime()));
+@@ -354,11 +364,15 @@ public class ApplicationLoader extends Application {
+ 
+         applicationHandler = new Handler(applicationContext.getMainLooper());
+ 
+-        AndroidUtilities.runOnUIThread(ApplicationLoader::startPushService);
++        if (!MINIMAL_COLD_BOOT) {
++            AndroidUtilities.runOnUIThread(ApplicationLoader::startPushService);
++        }
+         countDownLatch.countDown();
+ 
+-        LauncherIconController.tryFixLauncherIconIfNeeded();
+-        ProxyRotationController.init();
++        if (!MINIMAL_COLD_BOOT) {
++            LauncherIconController.tryFixLauncherIconIfNeeded();
++            ProxyRotationController.init();
++        }
+     }
+ 
+     public static void startPushService() {
