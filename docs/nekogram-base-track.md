@@ -26,6 +26,7 @@ Patch file:
 - [0002-login-first.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0002-login-first.patch)
 - [0003-startup-safe-boot.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0003-startup-safe-boot.patch)
 - [0004-minimal-cold-boot.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0004-minimal-cold-boot.patch)
+- [0005-post-splash-theme.patch](/Users/pippo/Downloads/proj-tg/patches/nekogram/0005-post-splash-theme.patch)
 
 Helper script:
 
@@ -48,6 +49,7 @@ Validated behavior of this patch:
 - Skips the intro mascot page and opens `LoginActivity` directly for non-activated users, to avoid startup stalls reported on test devices.
 - Defers `postInitApplication()` by one UI loop turn and adds a startup fallback that force-attaches login/main fragment if initial stack is still empty.
 - Temporarily disables optional Nekogram cold-start work such as analytics, launcher fixups, push bootstrap, and billing startup until boot stability is confirmed.
+- Adds `postSplashScreenTheme` on Android 12+ so the system splash can hand off to `Theme.TMessages` instead of lingering on the launcher icon theme.
 
 This is intentionally narrow. It proves the real-client integration point before wiring direct LLM calls.
 
@@ -95,6 +97,7 @@ The patch modifies these upstream files:
 - `TMessagesProj/src/main/res/values/strings.xml`
 - `TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java`
 - `TMessagesProj/src/main/java/org/telegram/messenger/ApplicationLoader.java`
+- `TMessagesProj/src/main/res/values-v31/styles.xml`
 
 ## Next steps
 

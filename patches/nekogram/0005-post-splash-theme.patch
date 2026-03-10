@@ -1,0 +1,12 @@
+diff --git a/TMessagesProj/src/main/res/values-v31/styles.xml b/TMessagesProj/src/main/res/values-v31/styles.xml
+index 5d48ad7da..a618064eb 100644
+--- a/TMessagesProj/src/main/res/values-v31/styles.xml
++++ b/TMessagesProj/src/main/res/values-v31/styles.xml
+@@ -19,6 +19,7 @@
+     <style name="Theme.TMessages.Start" parent="Theme.AppCompat.Light">
+         <item name="android:windowActionBar">false</item>
+         <item name="android:windowNoTitle">true</item>
++        <item name="postSplashScreenTheme">@style/Theme.TMessages</item>
+         <item name="android:actionBarStyle">@style/ActionBar.Transparent.TMessages.Start</item>
+         <item name="android:colorBackground">@android:color/white</item>
+         <item name="android:windowBackground">@android:color/white</item>
