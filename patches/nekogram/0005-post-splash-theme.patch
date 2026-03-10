@@ -1,12 +1,44 @@
+diff --git a/TMessagesProj/build.gradle b/TMessagesProj/build.gradle
+index e4bf347b9..45299f753 100644
+--- a/TMessagesProj/build.gradle
++++ b/TMessagesProj/build.gradle
+@@ -16,6 +16,7 @@ dependencies {
+     implementation 'androidx.activity:activity:1.12.3'
+     implementation 'androidx.fragment:fragment:1.8.9'
+     implementation 'androidx.core:core:1.17.0'
++    implementation 'androidx.core:core-splashscreen:1.0.1'
+     implementation 'androidx.palette:palette:1.0.0'
+     implementation 'androidx.exifinterface:exifinterface:1.4.2'
+     implementation 'androidx.dynamicanimation:dynamicanimation:1.1.0'
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+index 328b51497..2267e1e6c 100644
+--- a/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/LaunchActivity.java
+@@ -83,6 +83,7 @@ import androidx.core.app.ActivityCompat;
+ import androidx.core.content.pm.ShortcutInfoCompat;
+ import androidx.core.content.pm.ShortcutManagerCompat;
+ import androidx.core.graphics.ColorUtils;
++import androidx.core.splashscreen.SplashScreen;
+ 
+ import com.google.android.gms.common.api.Status;
+ import com.google.common.primitives.Longs;
+@@ -391,6 +392,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         isActive = true;
++        SplashScreen.installSplashScreen(this);
+         if (BuildVars.DEBUG_VERSION) {
+             StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder(StrictMode.getVmPolicy())
+                 .detectLeakedClosableObjects()
 diff --git a/TMessagesProj/src/main/res/values-v31/styles.xml b/TMessagesProj/src/main/res/values-v31/styles.xml
-index 5d48ad7da..de2325087 100644
+index 5d48ad7da..a618064eb 100644
 --- a/TMessagesProj/src/main/res/values-v31/styles.xml
 +++ b/TMessagesProj/src/main/res/values-v31/styles.xml
 @@ -19,6 +19,7 @@
      <style name="Theme.TMessages.Start" parent="Theme.AppCompat.Light">
          <item name="android:windowActionBar">false</item>
          <item name="android:windowNoTitle">true</item>
-+        <item name="android:postSplashScreenTheme">@style/Theme.TMessages</item>
++        <item name="postSplashScreenTheme">@style/Theme.TMessages</item>
          <item name="android:actionBarStyle">@style/ActionBar.Transparent.TMessages.Start</item>
          <item name="android:colorBackground">@android:color/white</item>
          <item name="android:windowBackground">@android:color/white</item>
